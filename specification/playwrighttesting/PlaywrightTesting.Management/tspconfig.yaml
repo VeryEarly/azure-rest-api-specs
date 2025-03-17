@@ -53,3 +53,32 @@ options:
     package-dir: "azure-resourcemanager-playwrighttesting"
     flavor: azure
     service-name: Playwright Testing
+  "@azure-tools/typespec-powershell":
+    service-dir: "src"
+    package-dir: "PlaywrightTesting/PlaywrightTesting.Autorest"
+    clear-output-folder: true
+    azure: true
+    module-version: 0.1.0
+    prefix: 'Az'
+    subject-prefix: 'PlaywrightTesting'
+    service-name: PlaywrightTesting
+    module-name: "{prefix}.{service-name}"
+    output-folder: "{output-dir}"
+    exclude-tableview-properties:
+      - Id
+      - Type
+    directive:
+      - where:
+          subject: Operation
+        hide: true
+      - where:
+          parameter-name: SubscriptionId
+        set:
+          default:
+            script: '(Get-AzContext).Subscription.Id'
+      - where:
+          variant: ^(Create|Update)(?!.*?Expanded|ViaJsonString|ViaJsonFilePath)
+        remove: true
+      - where:
+          verb: Set
+        hide: true
