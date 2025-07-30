@@ -1,0 +1,52 @@
+#extends: "D:\\workspace\\azure-rest-api-specs\\specification\\azuredependencymap\\DependencyMap.Management\\tspconfig.yaml"
+extends: "https://github.com/Azure/azure-rest-api-specs/blob/8e74a1f061f0870f7046e4631965c5feb157f880/specification/azuredependencymap/DependencyMap.Management/tspconfig.yaml"
+options:
+  "@azure-tools/typespec-powershell":
+    service-dir: "src"
+    package-dir: "DependencyMap/DependencyMap.Autorest"
+    clear-output-folder: true
+    debug: true
+    azure: true
+    module-version: 0.1.0
+    prefix: "Az"
+    subject-prefix: "DependencyMap"
+    service-name: DependencyMap
+    module-name: "{prefix}.{service-name}"
+    output-folder: "{output-dir}"
+    exclude-tableview-properties:
+      - Id
+      - Type
+    directive:
+      - where:
+          subject: Operation
+        hide: true
+      - where:
+          parameter-name: SubscriptionId
+        set:
+          default:
+            script: "(Get-AzContext).Subscription.Id"
+      - where:
+          variant: ^(Create|Update|Export)(?!.*?Expanded|ViaJsonString|ViaJsonFilePath)
+        remove: true
+      - where:
+          subject: MapConnection
+          variant: ^(Get)(?!.*?Expanded|ViaJsonString|ViaJsonFilePath)
+        remove: true
+      - where:
+          variant: ^CreateViaIdentity$|^CreateViaIdentityExpanded$
+        remove: true
+      - where:
+          verb: Set
+        remove: true
+      # Remove four post operations since there are issues in tsp and response schema are not defined.
+      - where:
+          subject: MapConnection|MapDependencyView
+          verb: Get
+        remove: true
+      - where:
+          verb: Export
+        remove: true
+      - no-inline:
+          - DiscoverySourceResourceProperties
+      - model-cmdlet:
+          - model-name: OffAzureDiscoverySourceResourceProperties
