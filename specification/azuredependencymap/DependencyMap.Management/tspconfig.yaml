@@ -47,6 +47,18 @@ options:
     head-as-boolean: true
     inject-spans: true
     remove-unreferenced-types: true
+  "@azure-tools/typespec-powershell":
+    service-dir: "src"
+    package-dir: "DependencyMap/DependencyMap.Autorest"
+    clear-output-folder: true
+    debug: true
+    azure: true
+    module-version: 0.1.0
+    prefix: "Az"
+    subject-prefix: "DependencyMap"
+    service-name: DependencyMap
+    module-name: "{prefix}.{service-name}"
+    output-folder: "{output-dir}"
 linter:
   extends:
     - "@azure-tools/typespec-azure-rulesets/resource-manager"
