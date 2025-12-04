@@ -1,13 +1,13 @@
-import { join, relative, resolve, sep } from "path";
-import { readFile } from "fs/promises";
-import { pathExists } from "./util.js";
-import { specification, readme, swagger } from "@azure-tools/specs-shared/changed-files";
+import { readme, swagger } from "@azure-tools/specs-shared/changed-files";
 import { SpecModel } from "@azure-tools/specs-shared/spec-model";
-import { ReadmeAffectedTags } from "./lintdiff-types.js";
 import deepEqual from "deep-eql";
+import { readFile } from "fs/promises";
+import { join, relative, resolve, sep } from "path";
+import { ReadmeAffectedTags } from "./lintdiff-types.js";
+import { pathExists } from "./util.js";
 
-import { deduplicateTags } from "./markdown-utils.js";
 import $RefParser from "@apidevtools/json-schema-ref-parser";
+import { deduplicateTags } from "./markdown-utils.js";
 
 export async function getRunList(
   beforePath: string,
@@ -19,12 +19,9 @@ export async function getRunList(
 
   // Read changed files, exclude any files that should be ignored
   const ignoreFilesWith = ["/examples/", "/quickstart-templates/", "/scenarios/"];
-  const changedSpecFiles = (await readFileList(changedFilesPath)).filter((file) => {
-    // File is in specification/ folder
-    if (!specification(file)) {
-      return false;
-    }
 
+  // Changed files should already be filtered to the top-level "specification" folder (see lintdiff-code.yaml)
+  const changedSpecFiles = (await readFileList(changedFilesPath)).filter((file) => {
     // File is not ignored
     for (const ignore of ignoreFilesWith) {
       if (file.includes(ignore)) {
@@ -85,7 +82,7 @@ export async function buildState(
 
   // Get affected services from changed files
   // e.g. specification/service1/readme.md -> specification/service1
-  const affectedServiceDirectories = await getAffectedServices(existingChangedFiles);
+  const affectedServiceDirectories = getAffectedServices(existingChangedFiles);
 
   // Build service models of affected services
   const specModels = new Map<string, SpecModel>();
@@ -236,10 +233,10 @@ export async function readFileList(changedFilesPath: string): Promise<string[]> 
  * @param changedFiles a list of changed files
  * @returns A list of "services" that are affected by the changed files
  */
-export async function getAffectedServices(changedFiles: string[]) {
+export function getAffectedServices(changedFiles: string[]) {
   const affectedServices = new Set<string>();
   for (const file of changedFiles) {
-    const service = await getService(file);
+    const service = getService(file);
     if (service) {
       affectedServices.add(service);
     }

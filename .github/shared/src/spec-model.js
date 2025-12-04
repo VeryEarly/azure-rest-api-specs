@@ -1,26 +1,42 @@
-// @ts-check
-
 import { readdir } from "fs/promises";
 import { resolve } from "path";
+import { inspect } from "util";
 import { flatMapAsync, mapAsync } from "./array.js";
 import { readme } from "./changed-files.js";
 import { Readme } from "./readme.js";
-
-/** @type {Map<string, SpecModel>} */
-const specModelCache = new Map();
+import { SpecModelError } from "./spec-model-error.js";
 
 /**
- * @typedef {Object} ToJSONOptions
- * @prop {boolean} [includeRefs]
- * @prop {boolean} [relativePaths]
- *
+ * @typedef {import('./readme.js').ReadmeJSON} ReadmeJSON
  * @typedef {import('./swagger.js').Swagger} Swagger
  * @typedef {import('./tag.js').Tag} Tag
  */
 
+/**
+ * @typedef {Object} ErrorJSON
+ * @prop {string} error
+ */
+
+/**
+ * @typedef {Object} SpecModelJSON
+ * @property {string} folder
+ * @property {(ReadmeJSON|ErrorJSON)[]} readmes
+ */
+
+/**
+ * @typedef {Object} ToJSONOptions
+ * @prop {boolean} [embedErrors]
+ * @prop {boolean} [includeOperations] Whether to include the operations in each swagger. Increases runtime about 20x, from 6s to 120s for whole specs repo.
+ * @prop {boolean} [includeRefs]
+ * @prop {boolean} [relativePaths]
+ */
+
+/** @type {Map<string, SpecModel>} */
+const specModelCache = new Map();
+
 export class SpecModel {
   /** @type {string} absolute path */
-  // @ts-ignore Ignore error that value may not be set in ctor (since we may returned cached value)
+  // @ts-expect-error Ignore error that value may not be set in ctor (since we may returned cached value)
   #folder;
 
   /** @type {import('./logger.js').ILogger | undefined} */
@@ -34,7 +50,9 @@ export class SpecModel {
    * @param {Object} [options]
    * @param {import('./logger.js').ILogger} [options.logger]
    */
-  constructor(folder, options) {
+  constructor(folder, options = {}) {
+    const { logger } = options;
+
     const resolvedFolder = resolve(folder);
 
     const cachedSpecModel = specModelCache.get(resolvedFolder);
@@ -43,7 +61,7 @@ export class SpecModel {
     }
 
     this.#folder = resolvedFolder;
-    this.#logger = options?.logger;
+    this.#logger = logger;
 
     specModelCache.set(resolvedFolder, this);
   }
@@ -161,7 +179,12 @@ export class SpecModel {
 
     // The swagger file supplied does not exist in the given specModel
     if (affectedSwaggers.size === 0) {
-      throw new Error(`No affected swaggers found in specModel for ${swaggerPath}`);
+      throw new SpecModelError(
+        `Swagger file ${swaggerPath} not found in specModel.\n` +
+          `It must be referenced in the "input-file" section of a tag in a readme.md file ` +
+          `or in a swagger JSON file using $ref.`,
+        { source: swaggerPath },
+      );
     }
 
     return affectedSwaggers;
@@ -201,29 +224,52 @@ export class SpecModel {
     const readmes = [...(await this.getReadmes()).values()];
     const tags = await flatMapAsync(readmes, async (r) => [...(await r.getTags()).values()]);
     const swaggers = tags.flatMap((t) => [...t.inputFiles.values()]);
-    return swaggers;
+    const refs = await flatMapAsync(swaggers, async (s) => [...(await s.getRefs()).values()]);
+    return [...swaggers, ...refs];
   }
 
   /**
    * @param {ToJSONOptions} [options]
-   * @returns {Promise<Object>}
+   * @returns {Promise<SpecModelJSON|ErrorJSON>}
    */
-  async toJSONAsync(options) {
-    const readmes = await mapAsync(
-      [...(await this.getReadmes()).values()].sort((a, b) => a.path.localeCompare(b.path)),
-      async (r) => await r.toJSONAsync(options),
-    );
-
-    return {
-      folder: this.#folder,
-      readmes,
-    };
+  async toJSONAsync(options = {}) {
+    return await embedError(async () => {
+      const readmes = await mapAsync(
+        [...(await this.getReadmes()).values()].sort((a, b) => a.path.localeCompare(b.path)),
+        async (r) => await r.toJSONAsync(options),
+      );
+      return {
+        folder: this.#folder,
+        readmes,
+      };
+    }, options);
   }
 
   /**
    * @returns {string}
    */
   toString() {
-    return `SpecModel(${this.#folder}, {logger: ${this.#logger}}})`;
+    return `SpecModel(${this.#folder}, {logger: ${inspect(this.#logger)}}})`;
+  }
+}
+
+/**
+ * @template T
+ * @param {() => Promise<T>} fn
+ * @param {Object} [options]
+ * @param {boolean} [options.embedErrors]
+ * @returns {Promise<T|ErrorJSON>}
+ */
+export async function embedError(fn, options = {}) {
+  const { embedErrors } = options;
+
+  try {
+    return await fn();
+  } catch (error) {
+    if (embedErrors && error instanceof Error) {
+      return { error: error.message };
+    } else {
+      throw error;
+    }
   }
 }

@@ -1,23 +1,23 @@
-import { test, describe, expect } from "vitest";
+import { describe, expect, test } from "vitest";
 
-import {
-  AutorestRunResult,
-  LintDiffViolation,
-  Source,
-  BeforeAfter,
-} from "../src/lintdiff-types.js";
-import {
-  correlateRuns,
-  getViolations,
-  getLintDiffViolations,
-  arrayIsEqual,
-  getNewItems,
-  isSameSources,
-} from "../src/correlateResults.js";
-import { relativizePath } from "../src/util.js";
-import { isWindows } from "./test-util.js";
 import { Readme } from "@azure-tools/specs-shared/readme";
 import { resolve } from "path";
+import {
+  arrayIsEqual,
+  correlateRuns,
+  getLintDiffViolations,
+  getNewItems,
+  getViolations,
+  isSameSources,
+} from "../src/correlateResults.js";
+import {
+  AutorestRunResult,
+  BeforeAfter,
+  LintDiffViolation,
+  Source,
+} from "../src/lintdiff-types.js";
+import { relativizePath } from "../src/util.js";
+import { isWindows } from "./test-util.js";
 
 const __dirname = new URL(".", import.meta.url).pathname;
 
@@ -297,7 +297,7 @@ describe("isSameSources", () => {
   });
 });
 
-describe("getLintDiffViolations", async () => {
+describe("getLintDiffViolations", () => {
   function createRunResult(stdout: string, stderr: string = ""): AutorestRunResult {
     return {
       rootPath: "string",
@@ -359,7 +359,7 @@ describe("getLintDiffViolations", async () => {
 });
 
 describe("arrayIsEqual", () => {
-  test("returns true for equal arrays", async () => {
+  test("returns true for equal arrays", () => {
     const a = ["a", "b", "c"];
     const b = ["a", "b", "c"];
 
@@ -367,7 +367,7 @@ describe("arrayIsEqual", () => {
     expect(result).toEqual(true);
   });
 
-  test("returns false for different arrays", async () => {
+  test("returns false for different arrays", () => {
     const a = ["a", "b", "c"];
     const b = ["a", "b", "d"];
 
@@ -375,7 +375,7 @@ describe("arrayIsEqual", () => {
     expect(result).toEqual(false);
   });
 
-  test("returns false for different lengths", async () => {
+  test("returns false for different lengths", () => {
     const a = ["a", "b", "c"];
     const b = ["a", "b"];
 
@@ -383,7 +383,7 @@ describe("arrayIsEqual", () => {
     expect(result).toEqual(false);
   });
 
-  test("returns true for empty arrays", async () => {
+  test("returns true for empty arrays", () => {
     const a: string[] = [];
     const b: string[] = [];
 
@@ -391,7 +391,7 @@ describe("arrayIsEqual", () => {
     expect(result).toEqual(true);
   });
 
-  test("returns true for equal arrays with different types", async () => {
+  test("returns true for equal arrays with different types", () => {
     const a = ["a", 1, "c"];
     const b = ["a", 1, "c"];
 
